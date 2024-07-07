@@ -1,0 +1,65 @@
+name: main-frontend-workflow
+
+on:
+  workflow_call:
+    inputs:
+      sonar_project_key:
+        required: true
+        type: string
+      
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      AWS_SESSION_TOKEN:
+        required: true
+      
+permissions: write-all
+jobs:
+  
+  build-and-test:
+    uses: ./.github/workflows/vue-build-and-test.yml
+  
+  
+  sonarqube-scan:
+    needs: build-and-test
+    uses: ./.github/workflows/sonarqube-scan-vue.yml
+    with:
+      sonar_project_key: ${{ inputs.sonar_project_key }}
+    secrets: inherit  
+
+  
+  deploy-dev:
+    needs: sonarqube-scan
+    uses: ./.github/workflows/deploy-s3.yml
+    with:
+      environment: dev
+      s3_bucket: "dev-devapp-devops-bucket"
+    secrets: inherit
+
+  deploy-test:
+    needs: deploy-dev
+    uses: ./.github/workflows/deploy-s3.yml
+    with:
+      environment: test
+      s3_bucket: "test-testapp-devops-bucket"
+    secrets: inherit
+
+
+  manual-approve:
+    needs: deploy-test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Await manual approval
+        uses: hmarr/auto-approve-action@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy-prod:
+    needs: manual-approve
+    uses: ./.github/workflows/deploy-s3.yml
+    with:
+      environment: prod
+      s3_bucket: "prod-prodapp-devops-bucket"
+    secrets: inherit

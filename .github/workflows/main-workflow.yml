@@ -1,0 +1,60 @@
+name: main-workflow
+
+on:
+  workflow_call:
+    inputs:
+      sonar_project_key:
+        required: true
+        type: string
+      service_name:
+        required: true
+        type: string
+    secrets:
+      AWS_ACCESS_KEY_ID:
+        required: true
+      AWS_SECRET_ACCESS_KEY:
+        required: true
+      AWS_SESSION_TOKEN:
+        required: true
+      AWS_ACCOUNT_ID:
+        required: true
+permissions: write-all
+jobs:
+  
+  build-and-test:
+    uses: ./.github/workflows/maven-build-and-test.yml
+  
+  
+  sonarqube-scan:
+    needs: build-and-test
+    uses: ./.github/workflows/sonarqube-scan-java.yml
+    with:
+      sonar_project_key: ${{ inputs.sonar_project_key }}
+    secrets: inherit  
+
+  ecr-login-and-push:
+    needs: sonarqube-scan
+    uses: ./.github/workflows/ecr-login-and-push.yml
+    with:
+      service_name: ${{ inputs.service_name }}
+    secrets: inherit
+
+  deploy-dev:
+    needs: ecr-login-and-push
+    uses: ./.github/workflows/deploy-dev.yml
+    secrets: inherit
+
+  deploy-staging:
+    needs: deploy-dev
+    uses: ./.github/workflows/deploy-staging.yml
+    secrets: inherit
+
+  manual-approve:
+    needs: deploy-staging
+    uses: ./.github/workflows/manual-approve.yml
+    secrets: inherit
+
+  deploy-prod:
+    needs: manual-approve
+    uses: ./.github/workflows/deploy-prod.yml
+    secrets: inherit
