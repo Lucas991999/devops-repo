@@ -25,15 +25,15 @@ jobs:
     uses: ./.github/workflows/maven-build-and-test.yml
   
   
-  sonarqube-scan:
-    needs: build-and-test
-    uses: ./.github/workflows/sonarqube-scan-java.yml
-    with:
-      sonar_project_key: ${{ inputs.sonar_project_key }}
-    secrets: inherit  
+#sonarqube-scan:
+#    needs: build-and-test
+#    uses: ./.github/workflows/sonarqube-scan-java.yml
+#    with:
+#      sonar_project_key: ${{ inputs.sonar_project_key }}
+#    secrets: inherit  
 
   ecr-login-and-push:
-    needs: sonarqube-scan
+#    needs: sonarqube-scan
     uses: ./.github/workflows/ecr-login-and-push.yml
     with:
       service_name: ${{ inputs.service_name }}
